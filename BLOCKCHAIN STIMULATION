@@ -1,0 +1,68 @@
+import hashlib
+import time
+
+class Block:
+    def __init__(self, prev_hash, transactions, difficulty):
+        self.prev_hash = prev_hash
+        self.transactions = list(transactions)
+        self.timestamp = int(time.time() * 1000)
+        self.nonce = 0
+        self.difficulty = difficulty
+        self.hash = ""
+
+    def compute_hash(self):
+        data = f"{self.prev_hash}|{self.transactions}|{self.timestamp}|{self.nonce}|{self.difficulty}"
+        return hashlib.sha256(data.encode()).hexdigest()
+
+    def mine(self):
+        target = "0" * self.difficulty
+        while True:
+            self.hash = self.compute_hash()
+            if self.hash.startswith(target):
+                break
+            self.nonce += 1
+
+class Blockchain:
+    def __init__(self, difficulty=4):
+        self.difficulty = difficulty
+        self.blocks = []
+        self.blocks.append(self.genesis())
+
+    def genesis(self):
+        b = Block("0", ["GENESIS"], self.difficulty)
+        b.mine()
+        return b
+
+    def add_block(self, transactions):
+        prev = self.blocks[-1]
+        b = Block(prev.hash, transactions, self.difficulty)
+        b.mine()
+        self.blocks.append(b)
+
+    def is_valid(self):
+        for i in range(1, len(self.blocks)):
+            curr = self.blocks[i]
+            prev = self.blocks[i-1]
+            if curr.compute_hash() != curr.hash:
+                return False
+            if curr.prev_hash != prev.hash:
+                return False
+            if not curr.hash.startswith("0" * self.difficulty):
+                return False
+        return True
+
+    def print(self):
+        for i, b in enumerate(self.blocks):
+            print(f"Block #{i}")
+            print(f"  prevHash: {b.prev_hash}")
+            print(f"  nonce   : {b.nonce}")
+            print(f"  time    : {b.timestamp}")
+            print(f"  hash    : {b.hash}")
+            print(f"  txs     : {b.transactions}")
+
+if __name__ == "__main__":
+    chain = Blockchain(difficulty=4)
+    chain.add_block(["Alice -> Bob: 5", "Bob -> Carol: 2"])
+    chain.add_block(["Carol -> Dave: 1", "Dave -> Alice: 3"])
+    print("Valid?", chain.is_valid())
+    chain.print()
