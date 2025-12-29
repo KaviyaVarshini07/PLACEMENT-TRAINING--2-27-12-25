@@ -1,0 +1,50 @@
+import heapq
+
+def astar(grid, start, goal):
+    rows, cols = len(grid), len(grid[0])
+    def h(a, b):
+        return abs(a[0]-b[0]) + abs(a[1]-b[1])
+    open_set = []
+    heapq.heappush(open_set, (0 + h(start, goal), 0, start, None))
+    came_from = {}
+    gscore = {start: 0}
+    visited = set()
+    while open_set:
+        f, g, current, parent = heapq.heappop(open_set)
+        if current in visited:
+            continue
+        visited.add(current)
+        came_from[current] = parent
+        if current == goal:
+            path = []
+            c = current
+            while c:
+                path.append(c)
+                c = came_from[c]
+            return list(reversed(path))
+        for dx, dy in [(1,0),(-1,0),(0,1),(0,-1)]:
+            nx, ny = current[0]+dx, current[1]+dy
+            if 0 <= nx < rows and 0 <= ny < cols and grid[nx][ny] == 0:
+                ng = g + 1
+                neighbor = (nx, ny)
+                if ng < gscore.get(neighbor, float('inf')):
+                    gscore[neighbor] = ng
+                    heapq.heappush(open_set, (ng + h(neighbor, goal), ng, neighbor, current))
+    return None
+
+def demo():
+    grid = [
+        [0,0,0,0,1,0],
+        [1,1,0,0,1,0],
+        [0,0,0,1,0,0],
+        [0,1,0,0,0,0],
+        [0,0,0,1,1,0],
+        [0,0,0,0,0,0],
+    ]
+    start = (0,0)
+    goal = (5,5)
+    path = astar(grid, start, goal)
+    print("Path:", path)
+
+if __name__ == "__main__":
+    demo()
