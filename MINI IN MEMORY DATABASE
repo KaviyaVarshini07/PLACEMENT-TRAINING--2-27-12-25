@@ -1,0 +1,85 @@
+import sys
+
+class Table:
+    def __init__(self, name, columns):
+        self.name = name
+        self.columns = list(columns)
+        self.rows = []
+
+    def insert(self, values):
+        if len(values) != len(self.columns):
+            raise ValueError("Column count mismatch")
+        self.rows.append(dict(zip(self.columns, values)))
+
+    def select_where(self, column, value):
+        return [row for row in self.rows if row.get(column) == value]
+
+    def __str__(self):
+        lines = [f"Table {self.name}({', '.join(self.columns)})"]
+        for r in self.rows:
+            lines.append(str(r))
+        return "\n".join(lines)
+
+class Database:
+    def __init__(self):
+        self.tables = {}
+
+    def create_table(self, name, columns):
+        if name in self.tables:
+            raise ValueError("Table exists")
+        self.tables[name] = Table(name, columns)
+
+    def execute(self, query):
+        tokens = query.strip().split()
+        if not tokens:
+            return "Empty query"
+        cmd = tokens[0].upper()
+        if cmd == "CREATE":
+            # CREATE TABLE users id name
+            if tokens[1].upper() != "TABLE":
+                return "Syntax: CREATE TABLE <name> <columns...>"
+            name = tokens[2]
+            cols = tokens[3:]
+            self.create_table(name, cols)
+            return f"Table {name} created"
+        elif cmd == "INSERT":
+            # INSERT INTO users VALUES 1 Alice
+            if tokens[1].upper() != "INTO" or tokens[3].upper() != "VALUES":
+                return "Syntax: INSERT INTO <table> VALUES <values...>"
+            table = self.tables.get(tokens[2])
+            if not table:
+                return "Table not found"
+            vals = tokens[4:]
+            table.insert(vals)
+            return "Row inserted"
+        elif cmd == "SELECT":
+            # SELECT FROM users WHERE name Alice
+            if tokens[1].upper() != "FROM":
+                return "Syntax: SELECT FROM <table> WHERE <col> <val>"
+            table = self.tables.get(tokens[2])
+            if not table:
+                return "Table not found"
+            if tokens[3].upper() != "WHERE":
+                return str(table)
+            col = tokens[4]
+            val = tokens[5]
+            rows = table.select_where(col, val)
+            return "\n".join(str(r) for r in rows) or "No rows"
+        else:
+            return "Unknown command"
+
+def demo():
+    db = Database()
+    print(db.execute("CREATE TABLE users id name"))
+    print(db.execute("INSERT INTO users VALUES 1 Alice"))
+    print(db.execute("INSERT INTO users VALUES 2 Bob"))
+    print(db.execute("SELECT FROM users"))
+    print(db.execute("SELECT FROM users WHERE name Alice"))
+
+if __name__ == "__main__":
+    if len(sys.argv) == 1:
+        demo()
+    else:
+        db = Database()
+        for line in sys.stdin:
+            print(db.execute(line))
