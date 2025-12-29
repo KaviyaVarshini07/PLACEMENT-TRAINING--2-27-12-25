@@ -1,0 +1,17 @@
+import socket
+
+def run_server(host="127.0.0.1", port=8080):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind((host, port))
+        s.listen(5)
+        print(f"Serving HTTP on {host}:{port}")
+        while True:
+            conn, addr = s.accept()
+            with conn:
+                request = conn.recv(1024).decode()
+                print("Request:", request.splitlines()[0])
+                response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nHello World!"
+                conn.sendall(response.encode())
+
+if __name__ == "__main__":
+    run_server()
