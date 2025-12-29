@@ -1,0 +1,34 @@
+import asyncio
+import time
+
+class RateLimiter:
+    def __init__(self, rate, per):
+        self.rate=rate
+        self.per=per
+        self.allowance=rate
+        self.last=time.monotonic()
+
+    async def acquire(self):
+        while True:
+            now=time.monotonic()
+            elapsed=now-self.last
+            self.last=now
+            self.allowance+=elapsed*(self.rate/self.per)
+            if self.allowance>self.rate:
+                self.allowance=self.rate
+            if self.allowance>=1:
+                self.allowance-=1
+                return
+            await asyncio.sleep(0.01)
+
+async def worker(limiter,id):
+    for i in range(5):
+        await limiter.acquire()
+        print(f"Worker {id} executed at {time.time()}")
+
+async def main():
+    limiter=RateLimiter(2,1)
+    await asyncio.gather(worker(limiter,1),worker(limiter,2))
+
+if __name__=="__main__":
+    asyncio.run(main())
