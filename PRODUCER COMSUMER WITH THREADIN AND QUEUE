@@ -1,0 +1,38 @@
+import threading
+import queue
+import time
+import random
+
+def producer(q, pid, count=10):
+    for i in range(count):
+        item = (pid, i, random.randint(1, 100))
+        q.put(item)
+        print(f"Producer {pid} produced {item}")
+        time.sleep(random.uniform(0.1, 0.4))
+    q.put(None)  # poison pill
+
+def consumer(q, cid):
+    while True:
+        item = q.get()
+        if item is None:
+            print(f"Consumer {cid} exiting")
+            q.put(None)  # propagate poison
+            break
+        pid, idx, val = item
+        time.sleep(random.uniform(0.2, 0.5))
+        print(f"Consumer {cid} consumed from P{pid} idx={idx} val={val}")
+        q.task_done()
+
+def main():
+    q = queue.Queue(maxsize=20)
+    producers = [threading.Thread(target=producer, args=(q, i, 10), daemon=True) for i in range(2)]
+    consumers = [threading.Thread(target=consumer, args=(q, i), daemon=True) for i in range(2)]
+    for t in producers + consumers:
+        t.start()
+    for t in producers:
+        t.join()
+    q.join()
+    time.sleep(0.2)
+
+if __name__ == "__main__":
+    main()
