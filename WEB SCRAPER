@@ -1,0 +1,11 @@
+import requests
+from bs4 import BeautifulSoup
+
+def scrape_titles(url):
+    r=requests.get(url)
+    soup=BeautifulSoup(r.text,"html.parser")
+    titles=[h.get_text() for h in soup.find_all("h2")]
+    return titles
+
+if __name__=="__main__":
+    print(scrape_titles("https://example.com"))
