@@ -1,0 +1,16 @@
+import time
+import random
+import multiprocessing as mp
+
+def heavy_task(x):
+    time.sleep(random.uniform(0.1, 0.3))
+    return x, x * x
+
+def main():
+    items = list(range(1, 51))
+    with mp.Pool(processes=mp.cpu_count()) as pool:
+        for original, squared in pool.imap_unordered(heavy_task, items):
+            print(f"{original} -> {squared}")
+
+if __name__ == "__main__":
+    main()
