@@ -1,0 +1,125 @@
+import sys
+import re
+
+TOKEN_RE = re.compile(r'\s*(?:(\d+)|(.))')
+
+class Parser:
+    def __init__(self, text):
+        self.tokens = list(self.tokenize(text))
+        self.pos = 0
+
+    def tokenize(self, text):
+        for num, other in TOKEN_RE.findall(text):
+            if num:
+                yield ('NUM', int(num))
+            else:
+                yield (other, other)
+
+    def peek(self):
+        return self.tokens[self.pos] if self.pos < len(self.tokens) else None
+
+    def eat(self, kind=None):
+        tok = self.peek()
+        if tok is None:
+            raise SyntaxError("Unexpected end")
+        if kind and tok[0] != kind:
+            raise SyntaxError(f"Expected {kind}, got {tok[0]}")
+        self.pos += 1
+        return tok
+
+    def parse(self):
+        # expr -> term ((+|-) term)*
+        node = self.term()
+        while True:
+            tok = self.peek()
+            if tok and tok[0] in ('+', '-'):
+                op = self.eat()[0]
+                right = self.term()
+                node = ('bin', op, node, right)
+            else:
+                break
+        return node
+
+    def term(self):
+        # term -> factor ((*|/) factor)*
+        node = self.factor()
+        while True:
+            tok = self.peek()
+            if tok and tok[0] in ('*', '/'):
+                op = self.eat()[0]
+                right = self.factor()
+                node = ('bin', op, node, right)
+            else:
+                break
+        return node
+
+    def factor(self):
+        tok = self.peek()
+        if tok is None:
+            raise SyntaxError("Unexpected end")
+        if tok[0] == 'NUM':
+            self.eat('NUM')
+            return ('num', tok[1])
+        if tok[0] == '(':
+            self.eat('(')
+            node = self.parse()
+            self.eat(')')
+            return node
+        if tok[0] == '-':
+            self.eat('-')
+            return ('unary', '-', self.factor())
+        raise SyntaxError(f"Unexpected token {tok}")
+
+def compile_to_bytecode(ast):
+    code = []
+    def emit(node):
+        t = node[0]
+        if t == 'num':
+            code.append(('PUSH', node[1]))
+        elif t == 'bin':
+            emit(node[2])
+            emit(node[3])
+            op = node[1]
+            code.append({'+':'ADD','-':'SUB','*':'MUL','/':'DIV'}[op])
+        elif t == 'unary':
+            emit(node[2])
+            code.append(('NEG',))
+        else:
+            raise ValueError("Unknown node")
+    emit(ast)
+    return code
+
+def run_bytecode(code):
+    stack = []
+    for ins in code:
+        if isinstance(ins, tuple) and ins[0] == 'PUSH':
+            stack.append(ins[1])
+        elif isinstance(ins, tuple) and ins[0] == 'NEG':
+            stack.append(-stack.pop())
+        elif ins == 'ADD':
+            b, a = stack.pop(), stack.pop()
+            stack.append(a + b)
+        elif ins == 'SUB':
+            b, a = stack.pop(), stack.pop()
+            stack.append(a - b)
+        elif ins == 'MUL':
+            b, a = stack.pop(), stack.pop()
+            stack.append(a * b)
+        elif ins == 'DIV':
+            b, a = stack.pop(), stack.pop()
+            stack.append(a / b)
+        else:
+            raise RuntimeError(f"Unknown instruction {ins}")
+    return stack[-1]
+
+def compile_and_run(expr):
+    ast = Parser(expr).parse()
+    code = compile_to_bytecode(ast)
+    result = run_bytecode(code)
+    return code, result
+
+if __name__ == "__main__":
+    expr = sys.argv[1] if len(sys.argv) > 1 else "3 + 4 * (2 - 1)"
+    bytecode, value = compile_and_run(expr)
+    print("Bytecode:", bytecode)
+    print("Result:", value)
